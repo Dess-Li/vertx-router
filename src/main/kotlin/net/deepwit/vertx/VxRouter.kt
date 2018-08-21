@@ -4,10 +4,14 @@ import io.vertx.ext.web.Route
 import kotlin.reflect.full.declaredMemberFunctions
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.handler.BodyHandler
+import net.deepwit.vertx.annotation.VxAnBodyHandler
 import net.deepwit.vertx.annotation.VxAnFailureRouter
 import net.deepwit.vertx.annotation.VxAnRouter
 import net.deepwit.vertx.annotation.readHttpMethod
 import kotlin.reflect.KFunction
+import kotlin.reflect.KMutableProperty
+import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.jvm.javaType
 
 
@@ -21,11 +25,21 @@ class VxRouter(private val obj:Any) {
                 mainUrl += ann.url
             }
         }
+        clazz.declaredMemberProperties.forEach { prop ->
+            prop.annotations.forEach { ann ->
+                if (prop.returnType.javaType.typeName == "io.vertx.ext.web.handler.BodyHandler") {
+                    val mutableProp = prop.call(obj) as BodyHandler
+                    when (ann) {
+                        is VxAnBodyHandler -> this.vxAnBodyHandlerExpression(router, mutableProp, ann, mainUrl)
+                    }
+                }
+            }
+        }
         clazz.declaredMemberFunctions.forEach { prop ->
             prop.annotations.forEach { ann ->
                 when (ann) {
                     is VxAnRouter -> this.vxRouterExpression(router, prop, ann, mainUrl)
-                    is VxAnFailureRouter -> this.vxFailureRouter(router, prop, ann, mainUrl)
+                    is VxAnFailureRouter -> this.vxFailureRouterExpression(router, prop, ann, mainUrl)
                 }
             }
         }
@@ -43,11 +57,17 @@ class VxRouter(private val obj:Any) {
         route.handler { routingContext -> prop.call(obj, routingContext) }
     }
 
-    private fun vxFailureRouter(router:Router, prop: KFunction<*>, ann: VxAnFailureRouter, mainUrl: String) {
+    private fun vxFailureRouterExpression(router:Router, prop: KFunction<*>, ann: VxAnFailureRouter, mainUrl: String) {
         var route:Route = router.route("$mainUrl${ann.url}")
         route = this.checkMethod(route, ann.method)
         this.checkHandler(prop)
         route.failureHandler { failureRoutingContext -> prop.call(obj, failureRoutingContext) }
+    }
+
+    private fun vxAnBodyHandlerExpression(router:Router, prop: BodyHandler, ann: VxAnBodyHandler, mainUrl: String) {
+        var route:Route = router.route("$mainUrl${ann.url}")
+        route = this.checkMethod(route, ann.method)
+        route.handler(prop)
     }
 
     private fun checkMethod(route:Route, method: Array<String>): Route {

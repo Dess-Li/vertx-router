@@ -18,3 +18,10 @@ annotation class VxAnFailureRouter(
         val method:Array<String> = [""],
         val url:String
 )
+
+@Target(AnnotationTarget.PROPERTY)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class VxAnBodyHandler(
+        val method:Array<String> = [""],
+        val url:String = ""
+)
