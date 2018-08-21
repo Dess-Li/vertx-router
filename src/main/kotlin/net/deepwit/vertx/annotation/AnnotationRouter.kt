@@ -1,11 +1,9 @@
 package net.deepwit.vertx.annotation
 
-import io.vertx.core.http.HttpMethod
-
 @Target(AnnotationTarget.FUNCTION,
         AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class VxRouter(
+annotation class VxAnRouter(
         val method:Array<String> = [""],
         val url:String,
         val consumes:Array<String>  = [""],
@@ -16,7 +14,7 @@ annotation class VxRouter(
 
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class VxFailureRouter(
+annotation class VxAnFailureRouter(
         val method:Array<String> = [""],
         val url:String
 )

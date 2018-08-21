@@ -18,7 +18,7 @@ ext {
 
 dependencies {
     compile group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib-jdk8', version: '1.2.61'
-    compile group: 'org.jetbrains.kotlin', name: 'kotlin-reflect', version: '1.2.61'
+    compile group: 'org.jetbrains.kotlin', name: 'kotlin-reflect', version: '1.2.60'
     compile group: 'io.vertx', name: 'vertx-core', version: vertxVersion
     compile group: 'io.vertx', name: 'vertx-lang-kotlin', version: vertxVersion
     compile group: 'io.vertx', name: 'vertx-web', version: vertxVersion
