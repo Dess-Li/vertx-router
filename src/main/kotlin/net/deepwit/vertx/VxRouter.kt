@@ -3,21 +3,16 @@ package net.deepwit.vertx
 import io.vertx.ext.web.Route
 import kotlin.reflect.full.declaredMemberFunctions
 import io.vertx.ext.web.Router
-import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
-import net.deepwit.vertx.annotation.VxAnBodyHandler
-import net.deepwit.vertx.annotation.VxAnFailureRouter
-import net.deepwit.vertx.annotation.VxAnRouter
-import net.deepwit.vertx.annotation.readHttpMethod
+import io.vertx.ext.web.handler.StaticHandler
+import net.deepwit.vertx.annotation.*
 import kotlin.reflect.KFunction
-import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.jvm.javaType
 
 
 class VxRouter(private val obj:Any) {
     fun expression(router:Router) {
-        println("start")
         val clazz = obj::class
         var mainUrl = ""
         clazz.annotations.forEach { ann ->
@@ -27,12 +22,21 @@ class VxRouter(private val obj:Any) {
         }
         clazz.declaredMemberProperties.forEach { prop ->
             prop.annotations.forEach { ann ->
-                if (prop.returnType.javaType.typeName == "io.vertx.ext.web.handler.BodyHandler") {
-                    val mutableProp = prop.call(obj) as BodyHandler
-                    when (ann) {
-                        is VxAnBodyHandler -> this.vxAnBodyHandlerExpression(router, mutableProp, ann, mainUrl)
+                when (ann) {
+                    is VxAnBodyHandler -> {
+                        if (prop.returnType.javaType.typeName == "io.vertx.ext.web.handler.BodyHandler") {
+                            val mutableProp = prop.call(obj) as BodyHandler
+                            this.vxAnBodyHandlerExpression(router, mutableProp, ann, mainUrl)
+                        }
+                    }
+                    is VxAnStaticHandler -> {
+                        if (prop.returnType.javaType.typeName == "io.vertx.ext.web.handler.StaticHandler") {
+                            val mutableProp = prop.call(obj) as StaticHandler
+                            this.vxAnStaticHandlerExpression(router, mutableProp, ann, mainUrl)
+                        }
                     }
                 }
+
             }
         }
         clazz.declaredMemberFunctions.forEach { prop ->
@@ -67,6 +71,11 @@ class VxRouter(private val obj:Any) {
     private fun vxAnBodyHandlerExpression(router:Router, prop: BodyHandler, ann: VxAnBodyHandler, mainUrl: String) {
         var route:Route = router.route("$mainUrl${ann.url}")
         route = this.checkMethod(route, ann.method)
+        route.handler(prop)
+    }
+
+    private fun vxAnStaticHandlerExpression(router:Router, prop: StaticHandler, ann: VxAnStaticHandler, mainUrl: String) {
+        var route:Route = router.route("$mainUrl${ann.url}")
         route.handler(prop)
     }
 
