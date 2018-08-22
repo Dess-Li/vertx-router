@@ -52,7 +52,13 @@ class VxRouter(private val obj:Any) {
     private fun vxRouterExpression(router:Router, prop: KFunction<*>, ann: VxAnRouter, mainUrl: String) {
         var route:Route = when (ann.getWithRegex.isNotBlank()) {
             true -> router.getWithRegex("$mainUrl${ann.getWithRegex}")
-            false -> router.route("$mainUrl${ann.url}")
+            false -> {
+                val routeUrl ="$mainUrl${ann.url}"
+                when (routeUrl.isBlank()) {
+                    true -> router.route()
+                    false -> router.route(routeUrl)
+                }
+            }
         }
         route = this.checkMethod(route, ann.method)
         route = this.checkConsumes(route, ann.consumes)
@@ -62,20 +68,43 @@ class VxRouter(private val obj:Any) {
     }
 
     private fun vxFailureRouterExpression(router:Router, prop: KFunction<*>, ann: VxAnFailureRouter, mainUrl: String) {
-        var route:Route = router.route("$mainUrl${ann.url}")
+        val routeUrl = "$mainUrl${ann.url}"
+        var route:Route = when (routeUrl.isBlank()) {
+            true -> router.route()
+            false -> router.route("$mainUrl${ann.url}")
+        }
         route = this.checkMethod(route, ann.method)
         this.checkHandler(prop)
         route.failureHandler { failureRoutingContext -> prop.call(obj, failureRoutingContext) }
     }
 
     private fun vxAnBodyHandlerExpression(router:Router, prop: BodyHandler, ann: VxAnBodyHandler, mainUrl: String) {
-        var route:Route = router.route("$mainUrl${ann.url}")
-        route = this.checkMethod(route, ann.method)
-        route.handler(prop)
+        if (ann.url.count() == 0) {
+            var route:Route = when (mainUrl.isBlank()) {
+                true -> router.route()
+                false -> router.route("$mainUrl")
+            }
+            route = this.checkMethod(route, ann.method)
+            route.handler(prop)
+
+        }
+        for (it in ann.url) {
+            val routeUrl = "$mainUrl$it"
+            var route:Route = when (routeUrl.isBlank()) {
+                true -> router.route()
+                false ->router.route(routeUrl)
+            }
+            route = this.checkMethod(route, ann.method)
+            route.handler(prop)
+        }
     }
 
     private fun vxAnStaticHandlerExpression(router:Router, prop: StaticHandler, ann: VxAnStaticHandler, mainUrl: String) {
-        var route:Route = router.route("$mainUrl${ann.url}")
+        val routeUrl = "$mainUrl${ann.url}"
+        var route:Route = when (routeUrl.isBlank()) {
+            true -> router.route()
+            false -> router.route("$mainUrl${ann.url}")
+        }
         route.handler(prop)
     }
 
