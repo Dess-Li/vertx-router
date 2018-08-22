@@ -21,19 +21,7 @@ annotation class VxAnFailureRouter(
 
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class VxAnBodyHandler(
+annotation class VxAnHandler(
         val method:Array<String> = [],
-        val url:Array<String> = []
-)
-
-@Target(AnnotationTarget.PROPERTY)
-@Retention(AnnotationRetention.RUNTIME)
-annotation class VxAnStaticHandler(
-        val url:String = ""
-)
-
-@Target(AnnotationTarget.PROPERTY)
-@Retention(AnnotationRetention.RUNTIME)
-annotation class VxAnCookieHandler(
         val url:Array<String> = []
 )

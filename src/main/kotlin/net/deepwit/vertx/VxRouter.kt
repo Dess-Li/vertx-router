@@ -1,13 +1,13 @@
 package net.deepwit.vertx
 
+import io.vertx.core.Handler
 import io.vertx.ext.web.Route
 import kotlin.reflect.full.declaredMemberFunctions
 import io.vertx.ext.web.Router
-import io.vertx.ext.web.handler.BodyHandler
-import io.vertx.ext.web.handler.CookieHandler
-import io.vertx.ext.web.handler.StaticHandler
+import io.vertx.ext.web.RoutingContext
 import net.deepwit.vertx.annotation.*
 import kotlin.reflect.KFunction
+import kotlin.reflect.KProperty1
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.jvm.javaType
 
@@ -23,27 +23,9 @@ class VxRouter(private val obj:Any) {
         }
         clazz.declaredMemberProperties.forEach { prop ->
             prop.annotations.forEach { ann ->
-                when (ann) {
-                    is VxAnBodyHandler -> {
-                        if (prop.returnType.javaType.typeName == "io.vertx.ext.web.handler.BodyHandler") {
-                            val mutableProp = prop.call(obj) as BodyHandler
-                            this.vxAnBodyHandlerExpression(router, mutableProp, ann, mainUrl)
-                        }
-                    }
-                    is VxAnStaticHandler -> {
-                        if (prop.returnType.javaType.typeName == "io.vertx.ext.web.handler.StaticHandler") {
-                            val mutableProp = prop.call(obj) as StaticHandler
-                            this.vxAnStaticHandlerExpression(router, mutableProp, ann, mainUrl)
-                        }
-                    }
-                    is VxAnCookieHandler -> {
-                        if (prop.returnType.javaType.typeName == "io.vertx.ext.web.handler.CookieHandler") {
-                            val mutableProp = prop.call(obj) as CookieHandler
-                            this.vxAnCookieHandlerExpression(router, mutableProp, ann, mainUrl)
-                        }
-                    }
+                if (ann is VxAnHandler) {
+                    this.vxAnHandlerExpression(router, prop, ann, mainUrl)
                 }
-
             }
         }
         clazz.declaredMemberFunctions.forEach { prop ->
@@ -85,59 +67,34 @@ class VxRouter(private val obj:Any) {
         route.failureHandler { failureRoutingContext -> prop.call(obj, failureRoutingContext) }
     }
 
-    private fun vxAnBodyHandlerExpression(router:Router, prop: BodyHandler, ann: VxAnBodyHandler, mainUrl: String) {
+    private fun vxAnHandlerExpression(router:Router, prop: KProperty1<*, *>, ann: VxAnHandler, mainUrl: String) {
+        val vxProp = try {
+            @Suppress("UNCHECKED_CAST")
+            prop.call(obj) as Handler<RoutingContext>
+        } catch (e:Exception) {
+          null
+        } ?: return
         if (ann.url.count() == 0) {
             var route:Route = when (mainUrl.isBlank()) {
                 true -> router.route()
-                false -> router.route("$mainUrl")
+                false -> router.route(mainUrl)
             }
-            route = this.checkMethod(route, ann.method)
-            route.handler(prop)
+            route.handler(vxProp)
             return
         }
         for (it in ann.url) {
             val routeUrl = "$mainUrl$it"
-            var route:Route = when (routeUrl.isBlank()) {
-                true -> router.route()
-                false ->router.route(routeUrl)
-            }
+            var route:Route
+            if (routeUrl.isBlank()) continue else route = router.route(routeUrl)
             route = this.checkMethod(route, ann.method)
-            route.handler(prop)
-        }
-    }
-
-    private fun vxAnStaticHandlerExpression(router:Router, prop: StaticHandler, ann: VxAnStaticHandler, mainUrl: String) {
-        val routeUrl = "$mainUrl${ann.url}"
-        var route:Route = when (routeUrl.isBlank()) {
-            true -> router.route()
-            false -> router.route("$mainUrl${ann.url}")
-        }
-        route.handler(prop)
-    }
-
-    private fun vxAnCookieHandlerExpression(router:Router, prop: CookieHandler, ann: VxAnCookieHandler, mainUrl: String) {
-        if (ann.url.count() == 0) {
-            var route:Route = when (mainUrl.isBlank()) {
-                true -> router.route()
-                false -> router.route("$mainUrl")
-            }
-            route.handler(prop)
-            return
-        }
-        for (it in ann.url) {
-            val routeUrl = "$mainUrl$it"
-            var route:Route = when (routeUrl.isBlank()) {
-                true -> router.route()
-                false ->router.route(routeUrl)
-            }
-            route.handler(prop)
+            route.handler(vxProp)
         }
     }
 
     private fun checkMethod(route:Route, method: Array<String>): Route {
         val methodRead = readHttpMethod(method)
         var checkRoute = route
-        if (methodRead == null) return checkRoute
+        if (methodRead.count() == 0) return checkRoute
         for (it in methodRead) {
             checkRoute = checkRoute.method(it)
         }
@@ -145,21 +102,19 @@ class VxRouter(private val obj:Any) {
     }
 
     private fun checkConsumes(route:Route, consumes: Array<String>): Route {
-        var checkRoute = route
         for (it in consumes) {
             if (it.isBlank()) continue
-            checkRoute.consumes(it)
+            route.consumes(it)
         }
-        return checkRoute
+        return route
     }
 
     private fun checkProduces(route:Route, produces: Array<String>): Route {
-        var checkRoute = route
         for (it in produces) {
             if (it.isBlank()) continue
-            checkRoute.produces(it)
+            route.produces(it)
         }
-        return checkRoute
+        return route
     }
 
     private fun checkHandler(prop: KFunction<*>) {
