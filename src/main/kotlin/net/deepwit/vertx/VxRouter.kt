@@ -4,6 +4,7 @@ import io.vertx.ext.web.Route
 import kotlin.reflect.full.declaredMemberFunctions
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.handler.BodyHandler
+import io.vertx.ext.web.handler.CookieHandler
 import io.vertx.ext.web.handler.StaticHandler
 import net.deepwit.vertx.annotation.*
 import kotlin.reflect.KFunction
@@ -33,6 +34,12 @@ class VxRouter(private val obj:Any) {
                         if (prop.returnType.javaType.typeName == "io.vertx.ext.web.handler.StaticHandler") {
                             val mutableProp = prop.call(obj) as StaticHandler
                             this.vxAnStaticHandlerExpression(router, mutableProp, ann, mainUrl)
+                        }
+                    }
+                    is VxAnCookieHandler -> {
+                        if (prop.returnType.javaType.typeName == "io.vertx.ext.web.handler.CookieHandler") {
+                            val mutableProp = prop.call(obj) as CookieHandler
+                            this.vxAnCookieHandlerExpression(router, mutableProp, ann, mainUrl)
                         }
                     }
                 }
@@ -86,7 +93,7 @@ class VxRouter(private val obj:Any) {
             }
             route = this.checkMethod(route, ann.method)
             route.handler(prop)
-
+            return
         }
         for (it in ann.url) {
             val routeUrl = "$mainUrl$it"
@@ -106,6 +113,25 @@ class VxRouter(private val obj:Any) {
             false -> router.route("$mainUrl${ann.url}")
         }
         route.handler(prop)
+    }
+
+    private fun vxAnCookieHandlerExpression(router:Router, prop: CookieHandler, ann: VxAnCookieHandler, mainUrl: String) {
+        if (ann.url.count() == 0) {
+            var route:Route = when (mainUrl.isBlank()) {
+                true -> router.route()
+                false -> router.route("$mainUrl")
+            }
+            route.handler(prop)
+            return
+        }
+        for (it in ann.url) {
+            val routeUrl = "$mainUrl$it"
+            var route:Route = when (routeUrl.isBlank()) {
+                true -> router.route()
+                false ->router.route(routeUrl)
+            }
+            route.handler(prop)
+        }
     }
 
     private fun checkMethod(route:Route, method: Array<String>): Route {
