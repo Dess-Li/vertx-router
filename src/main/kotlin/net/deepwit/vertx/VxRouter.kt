@@ -6,6 +6,7 @@ import kotlin.reflect.full.declaredMemberFunctions
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import net.deepwit.vertx.annotation.*
+import org.apache.log4j.Logger
 import kotlin.reflect.KFunction
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.declaredMemberProperties
@@ -13,6 +14,7 @@ import kotlin.reflect.jvm.javaType
 
 
 class VxRouter(private val obj:Any) {
+    val log = Logger.getLogger(VxRouter::class.java)
     fun expression(router:Router) {
         val clazz = obj::class
         var mainUrl = ""
@@ -72,7 +74,8 @@ class VxRouter(private val obj:Any) {
             @Suppress("UNCHECKED_CAST")
             prop.call(obj) as Handler<RoutingContext>
         } catch (e:Exception) {
-          null
+            this.log.warn("Router handler expression error: $prop")
+            null
         } ?: return
         if (ann.url.count() == 0) {
             var route:Route = when (mainUrl.isBlank()) {
@@ -119,7 +122,8 @@ class VxRouter(private val obj:Any) {
 
     private fun checkHandler(prop: KFunction<*>) {
         if (prop.parameters.count() != 2) throw Exception("Router function param count error: $prop")
-        if (prop.parameters[1].type.javaType.typeName != "io.vertx.ext.web.RoutingContext")
+        if (prop.parameters[1].type.javaType.typeName != "io.vertx.ext.web.RoutingContext") {
             throw Exception("Router function param type error: $prop")
+        }
     }
 }
